@@ -38,6 +38,12 @@ class Arrow {
   }
 }
 
+function vArrow (size, inverted=false, color){
+  if(inverted) {
+    new Arrow(0,size,0, 0, color);
+  } else
+    new Arrow(0,0,0, size, color);
+}
 
 // Least Common Multiplier, to get the hyperperiod
 function lcm(input_array) {
@@ -80,7 +86,8 @@ class Workspace {
     this.taskSize = (canvasY-sideMargin[2]-sideMargin[3]-7)/(this.nbStaticTasks + 1.5*this.nbServers);
     
     this.xSlots=[];
-    this.ySlots=[];
+    this.SySlots=[]; // y slots for servers
+    this.TySlots=[]; // y slots for static tasks
 
     let s = 0;
 
@@ -88,9 +95,9 @@ class Workspace {
     push();
       // Draw servers first
       for (s = 0; s<this.nbServers; s++) {
-        this.ySlots[s] = Math.trunc(s*1.5*this.taskSize);
+        this.SySlots[s] = Math.trunc(s*1.5*this.taskSize);
 
-        this.drawTaskArrow(0 == s,hyperperiod);
+        this.drawTaskArrow(0 == s,hyperperiod); // 0 == s -> if it is the first slot, draw x axis numbers
         text("s"+(s+1), -15, -(1.5*this.taskSize)/2+5);
         translate(0, -1.5*this.taskSize);
       }
@@ -102,14 +109,14 @@ class Workspace {
         if(s>0){ // If there were previously drawn servers
           if(0==i){
             // The first slot should give space to the following server
-            this.ySlots[s] = this.ySlots[s-1]+this.taskSize*1.5;
+            this.TySlots[i] = this.SySlots[s-1]+this.taskSize*1.5;
           }
           if(i>0){
-           this.ySlots[s+i] = this.ySlots[s+i-1] + this.taskSize;
+           this.TySlots[i] = this.TySlots[i-1] + this.taskSize;
           }
         }
         else {
-          this.ySlots[i] = Math.trunc(i*this.taskSize);
+          this.TySlots[i] = Math.trunc(i*this.taskSize);
           isFirstSlot = true;
         }
 
@@ -119,55 +126,101 @@ class Workspace {
       }
     pop();
   }
+
+  // Draws tasks horizontal arrows and uses vGrad to draw the graduations
   drawTaskArrow(isFirstSlot, hyperperiod) {
     let size = canvasX-sideMargin[0]-sideMargin[1];
     new Arrow(0, 0, size, 0, workspaceColor);
 
     push();
-    stroke(workspaceColor);
-    for (let i = 1; i<=hyperperiod; i++){
-      translate(size/hyperperiod, 0);
-      if(i%5) {
-        if(i != hyperperiod)
-          this.vGrad(); // normal graduation
-      }
-      else {
-        if(i != hyperperiod)
-          this.vGrad('l'); // large one every 5
-        if(isFirstSlot){ // Draw the numbers only on first ySlot
-          textAlign(CENTER);
-          textSize(10)
-          text(i,0, 20);
+      stroke(workspaceColor);
+      for (let i = 1; i<=hyperperiod; i++){
+        translate(size/hyperperiod, 0);
+        if(i%5) {
+          if(i != hyperperiod)
+            this.vGrad(); // normal graduation
+        }
+        else {
+          if(i != hyperperiod)
+            this.vGrad('l'); // large one every 5
+          if(isFirstSlot){ // Draw the numbers only on first ySlot
+            textAlign(CENTER);
+            textSize(10)
+            text(i,0, 20);
+          }
         }
       }
-    }
     pop();
 
     for (var i = 0; i <hyperperiod; i++) {
       this.xSlots[i] = i*size/hyperperiod;
     }
   }
+
+  // Draws the vertical graduations and numbering
   vGrad(size='s') {
     var s=6;
     if ('l' == size) 
       s=12;
     line(0,s/2,0,-s/2);
   }
+
+  // Goes to a specific task and slot. Usage: push();  goTo('s2', 8); pop();
+  goTo(task, xslot) {
+    if((task[1] > 0) || (task[0] == 's' && task[1]>this.nbServers) || (task[0] == 't' && task[1]>this.nbStaticTasks)){
+      if('s' == task[0]) { // If we ask for a server slot
+        translate(this.xSlots[xslot], -this.SySlots[parseInt(task[1])-1]);
+      } else {
+        translate(this.xSlots[xslot], -this.TySlots[parseInt(task[1])-1]);
+      }
+    } else { 
+      console.log('Invalid task designator in goTo');
+    }
+  }
+  // Draws deadline arrow
+  ai(task, xslot, inverted=false, color="#ff8888"){
+    let size;
+    if('s' == task[0]){
+      size = 1.2*this.taskSize;
+    }
+    else {
+      size = 0.7*this.taskSize;
+    }
+    push();
+      this.goTo(task, xslot);
+      vArrow(size, inverted, color);
+    pop();
+  }
+
+  /** GRAPHICS USERLAND FROM HERE**/
+
+  // Draws deadline arrows
+  di(task, xslot){
+    this.ai(task, xslot, true, "#ff8888");
+  }
+  // Release time arrows
+  ri(task, xslot) {
+    this.ai(task, xslot, false, "#44dc44");
+  }
+  // Period arrows
+  ti(task, xslot) {
+    this.ai(task, xslot, false, "#0066ff");
+  }
+  // Constrained deadline arrow
+  cdi(task, xslot){
+    this.ai(task, xslot, false, "#886688");
+    this.ai(task, xslot, true, "#886688");
+  }
+
 }
 
 function setup() {
   // put setup code here
     createCanvas(canvasX,canvasY);
-    workspace = new Workspace(5, 2, lcm([2,3,5]));
-
-    push();
-      translate(workspace.xSlots[5],-workspace.ySlots[2]);
-      arrow1 = new Arrow(0,0,0,workspace.taskSize-15,'#ff5050');
-    pop();
-    push();
-      translate(workspace.xSlots[3],-workspace.ySlots[1]);
-      arrow1 = new Arrow(0,0,0,1.5*workspace.taskSize-15,'#ff5050');
-    pop();
+    ws = new Workspace(5, 2, lcm([9,3,4]));
+    ws.cdi('t1', 4);
+    ws.ri('s2', 3);
+    ws.ti('t1', 6);
 }
 
 function draw() {
