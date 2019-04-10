@@ -89,6 +89,9 @@ class Workspace {
     this.SySlots=[]; // y slots for servers
     this.TySlots=[]; // y slots for static tasks
 
+    // Master clock
+    this.clock=0;
+
     let s = 0;
 
     // Begin tasks horizontal arrows drawing
@@ -125,6 +128,11 @@ class Workspace {
         translate(0, -this.taskSize);
       }
     pop();
+  }
+
+  clk(){
+    this.clock++;
+    // May need to redraw at some point, we'll see
   }
 
   // Draws tasks horizontal arrows and uses vGrad to draw the graduations
@@ -192,6 +200,7 @@ class Workspace {
     pop();
   }
 
+
   /** GRAPHICS USERLAND FROM HERE**/
 
   // Draws deadline arrows
@@ -212,6 +221,22 @@ class Workspace {
     this.ai(task, xslot, true, "#886688");
   }
 
+  step(task){
+    let size;
+    if('s' == task[0]){
+      size = 1.2*this.taskSize;
+    }
+    else {
+      size = 0.7*this.taskSize;
+    }
+    push();
+      fill(204, 101, 192, 127);
+      stroke(127, 63, 120, 100);
+      this.goTo(task, this.clock);
+      rect(0,0,this.xSlots[1]-this.xSlots[0],-size);
+    pop();
+  }
+
 }
 
 function setup() {
@@ -221,6 +246,20 @@ function setup() {
     ws.cdi('t1', 4);
     ws.ri('s2', 3);
     ws.ti('t1', 6);
+    ws.step('s1');
+    ws.clk();
+    ws.step('t2');
+    ws.step('s1');
+    ws.clk();
+    ws.step('t5');
+    ws.clk();
+    ws.step('t1');
+    ws.clk();
+    ws.clk();
+    ws.step('t1');
+
+
+
 }
 
 function draw() {
